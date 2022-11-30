@@ -57,6 +57,12 @@ class Store:
     def lookup(self, user, sitakoto):
         doc_ref = self.find_doc(user)
         return doc_ref.get().to_dict()[str(sitakoto)]
+    
+    def delete_field(self, user, sitakoto):
+        doc_ref = self.find_doc(user)
+        doc_ref.update({
+            f'`{sitakoto}`': firestore.DELETE_FIELD
+        })
 
 def to_jst(time):
     return (time + datetime.timedelta(hours=9)).replace(tzinfo=JST)
@@ -73,7 +79,7 @@ def format_times(time):
         minutes, secs = divmod(amari, 60)
         int_format = f'{int(days)}日{int(hours)}時間{int(minutes)}分'
         return {'lastTime': str(lastTime_format), 'interval': str(int_format)}
-
+# add_sita
 def add_sita(db, user, sitakoto):
     doc_ref = db.collection('mist_sita').document(str(user))
     doc = doc_ref.get()
@@ -197,7 +203,18 @@ def matome_format(target, m):
 # delete
 def deleteall(db, user):
     db.collection("mist_sita").document(user).delete()
-    
+
+def delete_field(user, sitakoto, store):
+    sitakoto_text = sitakoto
+    sitakoto = re.sub('[\?\.\/\[\]\-=`~_]', '＿', urllib.parse.quote_plus(sitakoto))
+    try:
+        store.lookup(user, sitakoto)
+    except KeyError:
+        return f"あなたはまだ{sitakoto_text}をしたことがないようです。"
+
+    store.delete_field(user, sitakoto)
+    return f"{sitakoto_text}のsitaをすべて削除しました。"
+
 class StoreMock:
 
     def __init__(self):
@@ -270,6 +287,7 @@ def unit_test():
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
+# reply
 def reply(data, context):
     global is_test
     is_test = check_test(data)
@@ -323,6 +341,8 @@ def reply(data, context):
         elif command == "まとめ":
             m = matome(acct, content, store)
             toot = matome_format(target, m)
+        elif command == "消して":
+            toot = delete_field(acct, target, store)
         else:
             sita = add_sita(db, acct, content)
             toot = add_sita_format(target, sita)
@@ -345,14 +365,14 @@ def reply(data, context):
         mastodon.status_reply(status, "unknown error", visibility="unlisted")
         traceback.print_exc()
         return toot
-    print(content)
+    print(reply_text)
 
 if __name__ == "__main__":
     data = {
         "value":{
             "fields": {
                 "id" : {
-                    "integerValue" : 71402
+                    "integerValue" : 73925
                 },
                 "is_test": False
         }
