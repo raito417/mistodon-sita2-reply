@@ -310,7 +310,7 @@ def reply(data, context):
     content = re.sub('@sita', '', content)
     content = content.split()
     
-    if not content or status["visibility"] == "direct":
+    if not content or status["visibility"] == "private":
         return None
     elif len(content[0]) > 400:
         mastodon.status_reply(status, "error: sita too long", visibility="unlisted")
@@ -355,14 +355,17 @@ def reply(data, context):
     if len(toot) == 0:
         mastodon.status_reply(status, "仕様外の入力です。", visibility="unlisted")
         return None
-    
+    if status["visibility"] == "direct":
+        visibility = "direct"
+    else:
+        visibility = "unlisted"
     try:
         reply_text = toot.replace("@", "＠")
         if len(reply_text)>= 450:
             reply_text = reply_text[:450] + "..."
-        mastodon.status_reply(status, reply_text, visibility="unlisted")
+        mastodon.status_reply(status, reply_text, visibility=visibility)
     except:
-        mastodon.status_reply(status, "unknown error", visibility="unlisted")
+        mastodon.status_reply(status, "unknown error", visibility=visibility)
         traceback.print_exc()
         return toot
     print(reply_text)
@@ -372,7 +375,7 @@ if __name__ == "__main__":
         "value":{
             "fields": {
                 "id" : {
-                    "integerValue" : 73925
+                    "integerValue" : 83826
                 },
                 "is_test": False
         }
