@@ -123,21 +123,47 @@ def add_sita_format(target, sita):
 
 
 # noitsu?
-def noitsu(user, sitakoto, store):
+def noitsu(user, sitakoto, store, start_from=None):
     sitakoto = sitakoto[0] if type(sitakoto) == list else sitakoto
     sitakoto = re.sub('[\?\.\/\[\]\-=`~_]', '＿', urllib.parse.quote_plus(sitakoto))
     try:
         sitakoto_list = store.lookup(user, sitakoto)
     except KeyError:
-        sitakoto_list = {}
+        sitakoto_list = []
     
     count = len(sitakoto_list)
-
+    # メンションの中にキーワードが含まれている場合、それに従い表示できるだけリスト表示
+    start_from_token = ["最新", "はじめから"]
     if count == 0:
         return {"count": 0}
+    elif start_from in start_from_token:
+        time_list = []
+        if "最新" in start_from:
+            for n in reversed(sitakoto_list[-count:-1]):
+                time_list.append([sitakoto_list.index(n), n.strftime("%Y/%m/%d %H:%M")])
+        elif "はじめ" in start_from:
+            for n in sitakoto_list[0:count]:
+                time_list.append([sitakoto_list.index(n), n.strftime("%Y/%m/%d %H:%M")])
+        
+        return {"count": count, "time_list": time_list, "start_from": start_from}
     else:
         t = format_times(sitakoto_list[-1])
-        return {'count': count, 'last_time': t['lastTime'], 'interval': t['interval']}
+        return {"count": count, "last_time": t["lastTime"], "interval": t["interval"]}
+
+def noitsu_format(target, itsu):
+    if itsu["count"] == 0:
+        toot = f'あなたはまだ{target}をしたことがないようです。'
+    else:
+        try:
+            toot = f'最後に{target}したのは、{itsu["interval"]}前（{itsu["last_time"]}）の{itsu["count"]}回目です。'
+        except KeyError:
+            time_list_formated = []
+            for time in itsu["time_list"]:
+                print(time)
+                time_list_formated.append(f"{str(time[0]+1).zfill(2)}. {time[1]}")
+                reply_text = "\n" + "\n".join(time_list_formated)
+            toot = [f'{target}の{itsu["start_from"]}から{itsu["count"]}回分の記録です。', reply_text]
+    return toot
 
 # matome
 def matome(user, sitakoto, store):
@@ -309,7 +335,7 @@ def reply(data, context):
     content = re.sub('<.*?>', '', content)
     content = re.sub('@sita', '', content)
     content = content.split()
-    
+
     if not content or status["visibility"] == "private":
         return None
     elif len(content[0]) > 400:
@@ -333,11 +359,13 @@ def reply(data, context):
         target = content[0]
         command = content[1]
         if command == "のいつ？":
-            itsu = noitsu(acct, target, store)
-            if itsu["count"] == 0:
-                toot = f'あなたはまだ{target}をしたことがないようです。'
+            if len(content) >= 3:
+                start_from = content[2]
             else:
-                toot = f'最後に{target}したのは、{itsu["interval"]}前（{itsu["last_time"]}）の{itsu["count"]}回目です。'
+                start_from = None
+            itsu = noitsu(acct, target, store, start_from)
+            toot = noitsu_format(target, itsu)
+
         elif command == "まとめ":
             m = matome(acct, content, store)
             toot = matome_format(target, m)
@@ -355,15 +383,30 @@ def reply(data, context):
     if len(toot) == 0:
         mastodon.status_reply(status, "仕様外の入力です。", visibility="unlisted")
         return None
+    
     if status["visibility"] == "direct":
         visibility = "direct"
     else:
         visibility = "unlisted"
+
     try:
+        # tootがリストの場合、toot[0]をCW警告文、toot[1]を本文として投稿する。
+        if type(toot) == list:
+            cw = toot[0]
+            toot = toot[1]
+            if len(cw + toot) >= 450:
+                toot = toot[0:-(len(cw+toot) - 450)] + "..."
+            
+            reply_text = toot.replace("@", "＠")
+            cw = cw.replace("@", "＠")
+            mastodon.status_reply(status, reply_text, spoiler_text=cw, visibility=visibility)
+            return toot
+
         reply_text = toot.replace("@", "＠")
         if len(reply_text)>= 450:
             reply_text = reply_text[:450] + "..."
         mastodon.status_reply(status, reply_text, visibility=visibility)
+        return reply_text
     except:
         mastodon.status_reply(status, "unknown error", visibility=visibility)
         traceback.print_exc()
@@ -375,10 +418,10 @@ if __name__ == "__main__":
         "value":{
             "fields": {
                 "id" : {
-                    "integerValue" : 83826
+                    "integerValue" : 96291
                 },
                 "is_test": False
         }
     }
     }
-    reply(data, None)
+    print(reply(data, None))
