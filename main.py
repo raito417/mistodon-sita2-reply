@@ -133,16 +133,16 @@ def noitsu(user, sitakoto, store, start_from=None):
     
     count = len(sitakoto_list)
     # メンションの中にキーワードが含まれている場合、それに従い表示できるだけリスト表示
-    start_from_token = ["最新", "はじめから"]
+    start_from_token = ["降順", "昇順"]
     if count == 0:
         return {"count": 0}
     elif start_from in start_from_token:
         time_list = []
-        if "最新" in start_from:
-            for n in reversed(sitakoto_list[-count:-1]):
+        if "降順" in start_from:
+            for n in reversed(sitakoto_list):
                 time_list.append([sitakoto_list.index(n), n.strftime("%Y/%m/%d %H:%M")])
-        elif "はじめ" in start_from:
-            for n in sitakoto_list[0:count]:
+        elif "昇順" in start_from:
+            for n in sitakoto_list:
                 time_list.append([sitakoto_list.index(n), n.strftime("%Y/%m/%d %H:%M")])
         
         return {"count": count, "time_list": time_list, "start_from": start_from}
@@ -418,7 +418,7 @@ if __name__ == "__main__":
         "value":{
             "fields": {
                 "id" : {
-                    "integerValue" : 96291
+                    "integerValue" : 96318
                 },
                 "is_test": False
         }
