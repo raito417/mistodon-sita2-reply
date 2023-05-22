@@ -162,7 +162,7 @@ def noitsu_format(target, itsu):
                 print(time)
                 time_list_formated.append(f"{str(time[0]+1).zfill(2)}. {time[1]}")
                 reply_text = "\n" + "\n".join(time_list_formated)
-            toot = [f'{target}の{itsu["start_from"]}から{itsu["count"]}回分の記録です。', reply_text]
+            toot = [f'{target}の{itsu["count"]}回分の記録を{itsu["start_from"]}で表示します。', reply_text]
     return toot
 
 # matome
